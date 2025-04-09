@@ -1,0 +1,43 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/workspaces/cdv-iot/UkladSymulacja/build/CMakeFiles/bootloader"
+		},
+		{
+			"file" : "/workspaces/cdv-iot/UkladSymulacja/build/CMakeFiles/bootloader.rule"
+		},
+		{
+			"file" : "/workspaces/cdv-iot/UkladSymulacja/build/CMakeFiles/bootloader-complete.rule"
+		},
+		{
+			"file" : "/workspaces/cdv-iot/UkladSymulacja/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule"
+		},
+		{
+			"file" : "/workspaces/cdv-iot/UkladSymulacja/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule"
+		},
+		{
+			"file" : "/workspaces/cdv-iot/UkladSymulacja/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule"
+		},
+		{
+			"file" : "/workspaces/cdv-iot/UkladSymulacja/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule"
+		},
+		{
+			"file" : "/workspaces/cdv-iot/UkladSymulacja/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule"
+		},
+		{
+			"file" : "/workspaces/cdv-iot/UkladSymulacja/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule"
+		},
+		{
+			"file" : "/workspaces/cdv-iot/UkladSymulacja/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"bootloader"
+		],
+		"name" : "bootloader"
+	}
+}

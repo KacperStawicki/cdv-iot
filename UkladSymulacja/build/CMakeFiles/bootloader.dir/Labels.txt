@@ -1,0 +1,13 @@
+# Target labels
+ bootloader
+# Source files and their labels
+/workspaces/cdv-iot/UkladSymulacja/build/CMakeFiles/bootloader
+/workspaces/cdv-iot/UkladSymulacja/build/CMakeFiles/bootloader.rule
+/workspaces/cdv-iot/UkladSymulacja/build/CMakeFiles/bootloader-complete.rule
+/workspaces/cdv-iot/UkladSymulacja/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule
+/workspaces/cdv-iot/UkladSymulacja/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule
+/workspaces/cdv-iot/UkladSymulacja/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule
+/workspaces/cdv-iot/UkladSymulacja/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule
+/workspaces/cdv-iot/UkladSymulacja/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule
+/workspaces/cdv-iot/UkladSymulacja/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule
+/workspaces/cdv-iot/UkladSymulacja/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule
