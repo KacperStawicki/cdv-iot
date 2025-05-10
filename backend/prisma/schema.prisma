@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String         @id @default(cuid())
+  email              String         @unique
+  password           String
+  firstName          String
+  lastName           String
+  devices            Device[]
+  
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  @@map("users")
+}
+
+model Device {
+  id              String    @id
+  name            String?
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  thresholdRed    Int       @default(10)
+  thresholdYellow Int       @default(40)
+  thresholdGreen  Int       @default(60)
+  measurements    Measurement[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("devices")
+}
+
+model Measurement {
+  id              String    @id @default(cuid())
+  deviceId        String
+  device          Device    @relation(fields: [deviceId], references: [id])
+  moistureLevel   Int
+  timestamp       DateTime  @default(now())
+
+  @@map("measurements")
+}
