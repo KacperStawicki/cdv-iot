@@ -1,26 +1,7 @@
 import fp from 'fastify-plugin';
 import swagger from '@fastify/swagger';
-import swaggerUi from '@fastify/swagger-ui';
 import { jsonSchemaTransform } from 'fastify-type-provider-zod';
 import { FastifyRequest, FastifyReply } from 'fastify';
-
-interface SwaggerMethodConfig {
-  tags?: string[];
-  [key: string]: unknown;
-}
-
-interface SwaggerPathMethods {
-  [method: string]: SwaggerMethodConfig;
-}
-
-interface SwaggerPaths {
-  [path: string]: SwaggerPathMethods;
-}
-
-interface SwaggerSpec {
-  paths: SwaggerPaths;
-  [key: string]: unknown;
-}
 
 export default fp(async function (fastify) {
   const ScalarApiReference = await (
@@ -30,14 +11,14 @@ export default fp(async function (fastify) {
   await fastify.register(swagger, {
     openapi: {
       info: {
-        title: 'Raterunners API',
+        title: 'Backend API',
         version: '1.0.0',
       },
       servers: [
         {
           url:
             process.env.NODE_ENV === 'production'
-              ? 'https://api.raterunners.com'
+              ? 'http://localhost:8080'
               : 'http://localhost:8080',
           description:
             process.env.NODE_ENV === 'production'
@@ -60,39 +41,8 @@ export default fp(async function (fastify) {
     hideUntagged: true,
   });
 
-  await fastify.register(swaggerUi, {
-    routePrefix: '/docs',
-    uiConfig: {
-      docExpansion: 'list',
-      deepLinking: false,
-      tagsSorter: 'alpha',
-      operationsSorter: 'alpha',
-      filter: true,
-    },
-    transformSpecification: (swaggerObject: Record<string, SwaggerSpec>) => {
-      if (!swaggerObject.paths) return swaggerObject;
-
-      const paths = Object.entries(swaggerObject.paths).reduce(
-        (acc, [path, methods]) => {
-          if (path.startsWith('/external')) {
-            acc[path] = methods as SwaggerPathMethods;
-          }
-          return acc;
-        },
-        {} as SwaggerPaths
-      );
-
-      return {
-        ...swaggerObject,
-        paths,
-      };
-    },
-    staticCSP: true,
-    transformStaticCSP: (header) => header,
-  });
-
   await fastify.register(ScalarApiReference, {
-    routePrefix: '/docs/internal',
+    routePrefix: '/docs',
     hooks: {
       onRequest: (
         request: FastifyRequest,

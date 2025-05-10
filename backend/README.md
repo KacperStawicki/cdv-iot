@@ -198,7 +198,7 @@ The project includes several npm scripts for development and database management
 
 ```bash
 # Start development server with hot reload
-npm run dev
+npm run docker:dev
 
 # Format code
 npm run format
@@ -207,7 +207,7 @@ npm run format
 npm run format:check
 ```
 
-### Database Management
+### Database Management inside of Docker
 
 ```bash
 # Seed the database with test data
