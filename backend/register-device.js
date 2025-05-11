@@ -1,4 +1,4 @@
-import http from 'http';
+const http = require('http');
 
 // Command configuration
 const deviceId =

@@ -1,11 +1,11 @@
-import WebSocket from 'ws';
-import crypto from 'crypto';
+const WebSocket = require('ws');
+const crypto = require('crypto');
 
 // Configuration
 const deviceId = process.argv[2] || 'test-device-1';
 const authKey = process.argv[3] || '32f0ac9f626f7e24866996f60e859d2a'; // This should be provided during device setup
 const serverUrl = `ws://localhost:8080/websocket?deviceId=${deviceId}`;
-const intervalSeconds = parseInt(process.argv[4] || '5', 10);
+const intervalSeconds = parseInt(process.argv[4] || '30', 10);
 
 // Generate random moisture level between 0 and 100
 const getRandomMoistureLevel = () => Math.floor(Math.random() * 101);
