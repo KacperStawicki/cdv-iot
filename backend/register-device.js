@@ -17,10 +17,10 @@ console.log(`Registering device ${deviceId}...`);
 // Convert data to JSON string
 const jsonData = JSON.stringify(requestData);
 
-// HTTP request options
+// HTTP request options - using the Docker container's port mapping
 const options = {
   hostname: 'localhost',
-  port: 8080,
+  port: 8080, // Make sure this matches your Docker port mapping
   path: '/device/register',
   method: 'POST',
   headers: {
@@ -40,20 +40,33 @@ const req = http.request(options, (res) => {
   });
 
   res.on('end', () => {
+    if (res.statusCode >= 400) {
+      console.error('Server Error:', responseData);
+      console.log('\nMake sure the Docker container is running with:');
+      console.log('npm run docker:dev');
+      return;
+    }
+
     try {
       const parsedData = JSON.parse(responseData);
-      console.log('Device registered successfully:');
-      console.log('Device ID:      ', parsedData.deviceId);
-      console.log('Auth Key:       ', parsedData.authKey);
-      console.log(
-        '\nSave these values! You will need them to configure your device and claim it from the web interface.'
-      );
-      console.log(`\nTo run the device simulation:`);
-      console.log(
-        `node continuous-monitor.js ${parsedData.deviceId} ${parsedData.authKey} 5`
-      );
+
+      if (parsedData.deviceId && parsedData.authKey) {
+        console.log('Device registered successfully:');
+        console.log('Device ID:      ', parsedData.deviceId);
+        console.log('Auth Key:       ', parsedData.authKey);
+        console.log(
+          '\nSave these values! You will need them to configure your device and claim it from the web interface.'
+        );
+        console.log(`\nTo run the device simulation:`);
+        console.log(
+          `node continuous-monitor.js ${parsedData.deviceId} ${parsedData.authKey} 5`
+        );
+      } else {
+        console.error('Unexpected response format:');
+        console.log(parsedData);
+      }
     } catch (error) {
-      console.error('Error parsing response:', error);
+      console.error('Error parsing response:', error.message);
       console.log('Raw response:', responseData);
     }
   });
@@ -62,6 +75,8 @@ const req = http.request(options, (res) => {
 // Handle request errors
 req.on('error', (error) => {
   console.error('Request error:', error.message);
+  console.log('\nDoes the Docker container need to be started? Try running:');
+  console.log('npm run docker:dev');
 });
 
 // Write data and end request

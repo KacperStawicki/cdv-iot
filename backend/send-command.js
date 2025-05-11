@@ -58,6 +58,8 @@ const req = http.request(options, (res) => {
 // Handle request errors
 req.on('error', (error) => {
   console.error('Request error:', error.message);
+  console.log('\nMake sure the Docker container is running with:');
+  console.log('npm run docker:dev');
 });
 
 // Write data and end request

@@ -2,8 +2,8 @@ import WebSocket from 'ws';
 import crypto from 'crypto';
 
 // Configuration
-const deviceId = process.argv[2] || 'test-device-001';
-const authKey = process.argv[3] || '1234567890abcdef'; // This should be provided during device setup
+const deviceId = process.argv[2] || 'test-device-1';
+const authKey = process.argv[3] || '32f0ac9f626f7e24866996f60e859d2a'; // This should be provided during device setup
 const serverUrl = `ws://localhost:8080/websocket?deviceId=${deviceId}`;
 const intervalSeconds = parseInt(process.argv[4] || '5', 10);
 
@@ -40,7 +40,12 @@ function startDevice() {
 
   // Send a measurement
   function sendMeasurement() {
-    if (!authenticated || !isClaimed) return;
+    if (!authenticated || !isClaimed) {
+      console.log(
+        'Not sending measurement: Device is not authenticated or not claimed yet'
+      );
+      return;
+    }
 
     const moistureLevel = getRandomMoistureLevel();
 
@@ -110,7 +115,15 @@ function startDevice() {
         if (isClaimed) {
           console.log('Device is claimed - starting to send measurements');
           // Start sending measurements at the specified interval
-          interval = setInterval(sendMeasurement, intervalSeconds * 1000);
+          if (!interval) {
+            // Send an initial measurement right away
+            setTimeout(() => {
+              sendMeasurement();
+            }, 500);
+
+            // Then start the regular interval
+            interval = setInterval(sendMeasurement, intervalSeconds * 1000);
+          }
         } else {
           console.log('Waiting for device to be claimed...');
         }
@@ -129,6 +142,11 @@ function startDevice() {
         RED threshold:    ${thresholdRed}%
         YELLOW threshold: ${thresholdYellow}%
         GREEN threshold:  ${thresholdGreen}%`);
+
+        // Explicitly send an initial measurement immediately after being claimed
+        setTimeout(() => {
+          sendMeasurement();
+        }, 500);
 
         // Start sending measurements
         if (!interval) {

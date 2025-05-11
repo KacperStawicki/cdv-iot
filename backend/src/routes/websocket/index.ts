@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { WebSocket } from 'ws';
-import { PrismaClient, Device } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { verifyDeviceSignature } from '../../utils/deviceAuth';
 
@@ -70,7 +70,6 @@ const wsRoutes: FastifyPluginAsync = async (fastify): Promise<void> => {
       // Get deviceId from query parameter or message
       let deviceId: string | null = req.query.deviceId || null;
       let isAuthenticated = false;
-      let isAuthenticatedDevice: Device | null = null;
 
       // Send a welcome message
       connection.send(
@@ -115,7 +114,6 @@ const wsRoutes: FastifyPluginAsync = async (fastify): Promise<void> => {
                 )
               ) {
                 isAuthenticated = true;
-                isAuthenticatedDevice = device;
                 deviceConnections.set(deviceId, connection);
 
                 // Send authentication success
@@ -155,12 +153,8 @@ const wsRoutes: FastifyPluginAsync = async (fastify): Promise<void> => {
               );
             }
           }
-          // Handle device measurement only if authenticated and claimed
-          else if (
-            data.type === 'measurement' &&
-            isAuthenticated &&
-            isAuthenticatedDevice
-          ) {
+          // Handle device measurement only if authenticated
+          else if (data.type === 'measurement' && isAuthenticated) {
             try {
               const msg = DeviceMessageSchema.parse(data);
 
@@ -175,8 +169,10 @@ const wsRoutes: FastifyPluginAsync = async (fastify): Promise<void> => {
                 return;
               }
 
-              // Make sure device is claimed
-              if (!isAuthenticatedDevice.claimed) {
+              // Check device claimed status directly from database to ensure we have the latest state
+              const currentDevice = await findDevice(deviceId);
+
+              if (!currentDevice || !currentDevice.claimed) {
                 connection.send(
                   JSON.stringify({
                     type: 'error',

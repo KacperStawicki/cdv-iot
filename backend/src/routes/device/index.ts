@@ -1,34 +1,30 @@
-import { FastifyPluginAsync } from 'fastify';
 import { PrismaClient } from '@prisma/client';
 import { generateDeviceAuthKey } from '../../utils/deviceAuth';
 import { DeviceClaimSchema } from '../../types/device';
 import { deviceConnections } from '../websocket';
 import { z } from 'zod';
 import { TokenDecoded } from '../../utils/types';
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 
-const deviceRoutes: FastifyPluginAsync = async (fastify): Promise<void> => {
+// Define schemas
+const RegisterDeviceSchema = z.object({
+  deviceId: z.string(),
+});
+
+const deviceRoutes: FastifyPluginAsyncZod = async (fastify): Promise<void> => {
   const prisma = new PrismaClient();
 
   // Register a new device
-  fastify.post(
+  fastify.post<{ Body: z.infer<typeof RegisterDeviceSchema> }>(
     '/register',
     {
       schema: {
-        body: {
-          type: 'object',
-          required: ['deviceId'],
-          properties: {
-            deviceId: { type: 'string' },
-          },
-        },
+        body: RegisterDeviceSchema,
         response: {
-          200: {
-            type: 'object',
-            properties: {
-              deviceId: { type: 'string' },
-              authKey: { type: 'string' },
-            },
-          },
+          200: z.object({
+            deviceId: z.string(),
+            authKey: z.string(),
+          }),
         },
         tags: ['Device'],
         summary: 'Register a new device',
@@ -36,7 +32,7 @@ const deviceRoutes: FastifyPluginAsync = async (fastify): Promise<void> => {
       },
     },
     async (request, reply) => {
-      const { deviceId } = request.body as { deviceId: string };
+      const { deviceId } = request.body;
 
       // Check if device already exists
       const existingDevice = await prisma.device.findUnique({
@@ -79,20 +75,14 @@ const deviceRoutes: FastifyPluginAsync = async (fastify): Promise<void> => {
       schema: {
         body: DeviceClaimSchema,
         response: {
-          200: {
-            type: 'object',
-            properties: {
-              success: { type: 'boolean' },
-              device: {
-                type: 'object',
-                properties: {
-                  id: { type: 'string' },
-                  name: { type: 'string' },
-                  claimed: { type: 'boolean' },
-                },
-              },
-            },
-          },
+          200: z.object({
+            success: z.boolean(),
+            device: z.object({
+              id: z.string(),
+              name: z.string(),
+              claimed: z.boolean(),
+            }),
+          }),
         },
         tags: ['Device'],
         summary: 'Claim a device',
@@ -147,11 +137,15 @@ const deviceRoutes: FastifyPluginAsync = async (fastify): Promise<void> => {
         connection?.send(
           JSON.stringify({
             type: 'claimed',
-            thresholdRed: device.thresholdRed,
-            thresholdYellow: device.thresholdYellow,
-            thresholdGreen: device.thresholdGreen,
+            claimed: true,
+            thresholdRed: updatedDevice.thresholdRed,
+            thresholdYellow: updatedDevice.thresholdYellow,
+            thresholdGreen: updatedDevice.thresholdGreen,
           })
         );
+
+        // Log a message about the notification
+        fastify.log.info(`Sent claimed notification to device ${deviceId}`);
       }
 
       return {
