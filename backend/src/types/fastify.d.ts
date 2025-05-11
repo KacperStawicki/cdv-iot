@@ -1,11 +1,8 @@
 import 'fastify';
-import { AxiosInstance, AxiosRequestConfig } from 'axios';
-import { Transporter, SendMailOptions } from 'nodemailer';
+import { AxiosInstance } from 'axios';
 import { FastifyPluginCallback } from 'fastify';
 import { PrismaClient } from '@prisma/client';
 import { JWT } from '@fastify/jwt';
-import { FastifyRedis } from '@fastify/redis';
-import Stripe from 'stripe';
 import { TokenDecoded } from '../utils/types';
 
 declare module 'fastify-mailer' {
@@ -17,7 +14,10 @@ declare module 'fastify-mailer' {
 declare module 'fastify' {
   interface FastifyInstance {
     authenticate: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
-    authenticate_device: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    authenticate_device: (
+      req: FastifyRequest,
+      reply: FastifyReply
+    ) => Promise<void>;
     refresh: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
 
     axios: AxiosInstance;

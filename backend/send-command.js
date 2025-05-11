@@ -1,10 +1,10 @@
-const http = require('http');
+import http from 'http';
 
 // Command configuration
 const deviceId = process.argv[2] || 'test-device-001';
-const thresholdRed = parseInt(process.argv[3] || '15', 10);
-const thresholdYellow = parseInt(process.argv[4] || '40', 10);
-const thresholdGreen = parseInt(process.argv[5] || '70', 10);
+const thresholdRed = parseInt(process.argv[3] || '10', 10);
+const thresholdYellow = parseInt(process.argv[4] || '20', 10);
+const thresholdGreen = parseInt(process.argv[5] || '30', 10);
 
 // Command data
 const commandData = {
@@ -13,8 +13,8 @@ const commandData = {
   payload: {
     thresholdRed,
     thresholdYellow,
-    thresholdGreen
-  }
+    thresholdGreen,
+  },
 };
 
 console.log('Sending command:', commandData);
@@ -30,20 +30,20 @@ const options = {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'Content-Length': Buffer.byteLength(jsonData)
-  }
+    'Content-Length': Buffer.byteLength(jsonData),
+  },
 };
 
 // Send the request
 const req = http.request(options, (res) => {
   console.log(`STATUS: ${res.statusCode}`);
-  
+
   let responseData = '';
-  
+
   res.on('data', (chunk) => {
     responseData += chunk;
   });
-  
+
   res.on('end', () => {
     try {
       const parsedData = JSON.parse(responseData);
@@ -71,4 +71,4 @@ Usage:
 
 Example:
   node send-command.js test-device-001 10 30 60
-`); 
+`);

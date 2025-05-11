@@ -29,7 +29,7 @@ const commandRoutes: FastifyPluginAsync = async (fastify): Promise<void> => {
   fastify.post(
     '/',
     {
-      onRequest: [fastify.authenticate_device],
+      // onRequest: [fastify.authenticate_device],
       schema: {
         body: DeviceCommandSchema,
         response: {
