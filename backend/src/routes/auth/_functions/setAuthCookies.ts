@@ -14,7 +14,6 @@ export const setAuthCookies = (
       secure: process.env.NODE_ENV === 'production',
       path: '/',
       sameSite: 'lax',
-      domain: process.env.DOMAIN,
       maxAge: 60 * 60 * 24, // 24 Hours
     });
   }
