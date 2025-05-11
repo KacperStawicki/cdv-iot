@@ -30,6 +30,7 @@ The backend is built with the following technologies:
 ### WebSocket Endpoints
 
 - `/websocket` - Main endpoint for device connections
+
   - Devices connect here to send measurements and receive configurations
   - Query parameters:
     - `deviceId` - Optional device identifier
@@ -59,7 +60,7 @@ The backend is built with the following technologies:
 
 ## Authentication
 
-Authentication is implemented using JWT (JSON Web Tokens) with HTTP-only cookies. 
+Authentication is implemented using JWT (JSON Web Tokens) with HTTP-only cookies.
 
 1. Users must first authenticate through the `/auth/login` endpoint
 2. The server sets HTTP-only cookies containing access and refresh tokens
@@ -71,6 +72,7 @@ Authentication is implemented using JWT (JSON Web Tokens) with HTTP-only cookies
 The system includes two authentication decorators:
 
 1. **authenticate** - Basic user authentication
+
    - Verifies the user's JWT token
    - Makes user data available in `request.user`
 
@@ -86,6 +88,7 @@ The system includes two authentication decorators:
      - 403 Forbidden - If user doesn't own the device
 
 For testing:
+
 - Use the default admin account: admin@example.com / password123
 - Login before attempting to use authenticated endpoints
 
@@ -106,6 +109,7 @@ For testing:
 ### Server to Device
 
 - **Welcome Message**
+
   ```json
   {
     "type": "welcome",
@@ -114,6 +118,7 @@ For testing:
   ```
 
 - **Configuration Message**
+
   ```json
   {
     "type": "config",
@@ -124,6 +129,7 @@ For testing:
   ```
 
 - **Acknowledgment Message**
+
   ```json
   {
     "type": "ack",
@@ -143,10 +149,8 @@ For testing:
 
 - **User** - Stores user information
   - `id`, `email`, `password`, `firstName`, `lastName`
-  
 - **Device** - Stores device information
   - `id`, `name`, `userId`, `thresholdRed`, `thresholdYellow`, `thresholdGreen`
-  
 - **Measurement** - Stores moisture measurements
   - `id`, `deviceId`, `moistureLevel`, `timestamp`
 
@@ -255,6 +259,7 @@ node ws-test-client.js [deviceId]
 ```
 
 Example:
+
 ```bash
 node ws-test-client.js test-device-001
 ```
@@ -268,11 +273,13 @@ node continuous-monitor.js [deviceId] [intervalSeconds]
 ```
 
 Example:
+
 ```bash
 node continuous-monitor.js test-device-001 3
 ```
 
 This will:
+
 - Connect to the WebSocket server at ws://localhost:8080/websocket
 - Send random moisture readings every 3 seconds
 - Display the moisture status (DRY/LOW/GOOD/WET) based on thresholds
@@ -287,6 +294,7 @@ node send-command.js [deviceId] [redThreshold] [yellowThreshold] [greenThreshold
 ```
 
 Example:
+
 ```bash
 node send-command.js test-device-001 20 50 80
 ```
@@ -301,11 +309,13 @@ The system uses four status levels for moisture:
 - **WET (BLUE)** - Moisture level > Green threshold
 
 Default seed values:
+
 - Red: 15%
 - Yellow: 40%
 - Green: 70%
 
 Default values for new devices:
+
 - Red: 10%
 - Yellow: 40%
 - Green: 60%
@@ -328,6 +338,73 @@ npm run docker:dev
 ```
 
 This enables hot reloading and more verbose logging.
+
+## Device Authentication and Claiming
+
+The system now includes a secure device authentication and claiming process:
+
+### Device Authentication
+
+1. Devices connect to the WebSocket endpoint but do not start sending data automatically
+2. Instead, they must authenticate first using their assigned authentication key
+3. Authentication uses an MD5 signature verification where:
+   - The device sends: `deviceId`, `timestamp`, and a `signature`
+   - The signature is computed as: `MD5(deviceId + ":" + authKey + ":" + timestamp)`
+   - The server verifies this signature using the stored `authKey` for the device
+
+### Device Registration
+
+Before a device can connect, it must be registered in the system:
+
+```bash
+# Register a new device
+node register-device.js [optional-device-id]
+```
+
+This returns a `deviceId` and an `authKey` that must be configured on the device.
+
+### Device Claiming
+
+New devices are registered but unclaimed by default. A device must be claimed by a user before it can send measurements:
+
+1. A user logs into the frontend application
+2. They navigate to the "Add Device" page
+3. They provide the `deviceId` and `authKey` for their device
+4. The system verifies the key and assigns the device to that user
+5. The device receives a notification that it's been claimed and starts sending data
+
+This ensures that:
+
+- Only registered devices can connect to the system
+- Devices don't send data until they're associated with a user
+- Users can only claim devices they physically have (as they need the authKey)
+
+### Test Flow
+
+To test the complete flow:
+
+1. Register a new device:
+
+   ```bash
+   node register-device.js my-device-001
+   ```
+
+2. Take note of the `deviceId` and `authKey` provided
+
+3. Start the device simulation:
+
+   ```bash
+   node continuous-monitor.js my-device-001 [auth-key] 5
+   ```
+
+4. The device will connect and authenticate but won't send data yet
+
+5. Login to the web application and claim the device by providing:
+
+   - Device ID: `my-device-001`
+   - Auth Key: (the key from step 2)
+
+6. Once claimed, the device will automatically start sending moisture measurements
 
 ## License
 

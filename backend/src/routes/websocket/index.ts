@@ -1,7 +1,8 @@
 import { FastifyPluginAsync } from 'fastify';
 import { WebSocket } from 'ws';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Device } from '@prisma/client';
 import { z } from 'zod';
+import { verifyDeviceSignature } from '../../utils/deviceAuth';
 
 // Define message types
 const DeviceMessageSchema = z.object({
@@ -9,6 +10,13 @@ const DeviceMessageSchema = z.object({
   deviceId: z.string(),
   moistureLevel: z.number().min(0).max(100),
   timestamp: z.string().optional(), // ISO string, optional as we can use server time
+});
+
+const DeviceAuthSchema = z.object({
+  type: z.literal('auth'),
+  deviceId: z.string(),
+  timestamp: z.string(),
+  signature: z.string(),
 });
 
 // Define query parameters type
@@ -22,49 +30,20 @@ export const deviceConnections = new Map<string, WebSocket>();
 const wsRoutes: FastifyPluginAsync = async (fastify): Promise<void> => {
   const prisma = new PrismaClient();
 
-  // Helper function to ensure a device exists in the database
-  async function ensureDeviceExists(deviceId: string) {
+  // Helper function to find a device in the database
+  async function findDevice(deviceId: string) {
     try {
       // Try to find the device
-      let device = await prisma.device.findUnique({
+      const device = await prisma.device.findUnique({
         where: { id: deviceId },
+        include: { user: true },
       });
-
-      // If device doesn't exist, create it
-      if (!device) {
-        fastify.log.info(`Creating new device with ID: ${deviceId}`);
-
-        // First, find a user to associate with the device
-        // (In a real app, you'd have proper authentication)
-        const firstUser = await prisma.user.findFirst();
-
-        if (!firstUser) {
-          fastify.log.error(
-            'Cannot create device - no users exist in the database'
-          );
-          return null;
-        }
-
-        // Create the device with default values
-        device = await prisma.device.create({
-          data: {
-            id: deviceId,
-            name: `Device ${deviceId}`,
-            userId: firstUser.id,
-            thresholdRed: 10,
-            thresholdYellow: 40,
-            thresholdGreen: 60,
-          },
-        });
-
-        fastify.log.info(`Device ${deviceId} created successfully`);
-      }
 
       return device;
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
-      fastify.log.error(`Error ensuring device exists: ${errorMessage}`);
+      fastify.log.error(`Error finding device: ${errorMessage}`);
       return null;
     }
   }
@@ -84,94 +63,159 @@ const wsRoutes: FastifyPluginAsync = async (fastify): Promise<void> => {
         tags: ['WebSocket'],
         summary: 'Device WebSocket Endpoint',
         description:
-          'WebSocket endpoint for IoT devices to connect and send moisture measurements. Devices can connect by providing deviceId in querystring or in the message payload.',
+          'WebSocket endpoint for IoT devices to connect and send moisture measurements. Devices need to authenticate before sending data.',
       },
     },
     (connection, req) => {
       // Get deviceId from query parameter or message
       let deviceId: string | null = req.query.deviceId || null;
+      let isAuthenticated = false;
+      let isAuthenticatedDevice: Device | null = null;
 
-      if (deviceId) {
-        // Store the connection immediately if deviceId is in query params
-        deviceConnections.set(deviceId, connection);
-        fastify.log.info(`Device ${deviceId} connected via query parameter`);
-
-        // Send a welcome message
-        connection.send(
-          JSON.stringify({
-            type: 'welcome',
-            message: `Connected as device ${deviceId}`,
-          })
-        );
-
-        // Ensure the device exists and send its configuration
-        ensureDeviceExists(deviceId)
-          .then((device) => {
-            if (device) {
-              // Send thresholds to device
-              connection.send(
-                JSON.stringify({
-                  type: 'config',
-                  thresholdRed: device.thresholdRed,
-                  thresholdYellow: device.thresholdYellow,
-                  thresholdGreen: device.thresholdGreen,
-                })
-              );
-            }
-          })
-          .catch((err) => {
-            fastify.log.error(`Error fetching device config: ${err.message}`);
-          });
-      }
+      // Send a welcome message
+      connection.send(
+        JSON.stringify({
+          type: 'welcome',
+          message: 'Please authenticate',
+          needsAuth: true,
+        })
+      );
 
       connection.on('message', async (message: Buffer) => {
         try {
           const data = JSON.parse(message.toString());
           fastify.log.debug(`Received message: ${message.toString()}`);
 
-          // Handle device measurement
-          if (data.type === 'measurement') {
-            const msg = DeviceMessageSchema.parse(data);
+          // Handle device authentication first
+          if (data.type === 'auth') {
+            try {
+              const authMessage = DeviceAuthSchema.parse(data);
+              deviceId = authMessage.deviceId;
 
-            // If deviceId wasn't in query params, get it from the message
-            if (!deviceId) {
-              deviceId = msg.deviceId;
-              deviceConnections.set(deviceId, connection);
-              fastify.log.info(`Device ${deviceId} connected via message`);
-            }
+              // Find the device in the database
+              const device = await findDevice(deviceId);
 
-            // Ensure the device exists
-            const device = await ensureDeviceExists(deviceId);
+              if (!device) {
+                connection.send(
+                  JSON.stringify({
+                    type: 'error',
+                    message: 'Device not found',
+                  })
+                );
+                return;
+              }
 
-            if (!device) {
+              // Verify the signature
+              if (
+                verifyDeviceSignature(
+                  deviceId,
+                  device.authKey,
+                  authMessage.timestamp,
+                  authMessage.signature
+                )
+              ) {
+                isAuthenticated = true;
+                isAuthenticatedDevice = device;
+                deviceConnections.set(deviceId, connection);
+
+                // Send authentication success
+                connection.send(
+                  JSON.stringify({
+                    type: 'auth_success',
+                    claimed: device.claimed,
+                  })
+                );
+
+                // If device is claimed, send its configuration
+                if (device.claimed) {
+                  connection.send(
+                    JSON.stringify({
+                      type: 'config',
+                      thresholdRed: device.thresholdRed,
+                      thresholdYellow: device.thresholdYellow,
+                      thresholdGreen: device.thresholdGreen,
+                    })
+                  );
+                }
+              } else {
+                connection.send(
+                  JSON.stringify({
+                    type: 'error',
+                    message: 'Authentication failed',
+                  })
+                );
+              }
+            } catch {
+              // Parse error in auth message, just send generic error
               connection.send(
                 JSON.stringify({
                   type: 'error',
-                  message: 'Failed to register device',
+                  message: 'Invalid authentication message',
                 })
               );
-              return;
             }
+          }
+          // Handle device measurement only if authenticated and claimed
+          else if (
+            data.type === 'measurement' &&
+            isAuthenticated &&
+            isAuthenticatedDevice
+          ) {
+            try {
+              const msg = DeviceMessageSchema.parse(data);
 
-            // Store the measurement in the database
-            await prisma.measurement.create({
-              data: {
-                deviceId: msg.deviceId,
-                moistureLevel: msg.moistureLevel,
-                timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
-              },
-            });
+              // Make sure deviceId matches
+              if (msg.deviceId !== deviceId) {
+                connection.send(
+                  JSON.stringify({
+                    type: 'error',
+                    message: 'Device ID mismatch',
+                  })
+                );
+                return;
+              }
 
-            // Acknowledge the message
-            connection.send(JSON.stringify({ type: 'ack', status: 'success' }));
+              // Make sure device is claimed
+              if (!isAuthenticatedDevice.claimed) {
+                connection.send(
+                  JSON.stringify({
+                    type: 'error',
+                    message: 'Device not claimed yet',
+                  })
+                );
+                return;
+              }
 
-            // Send config data if we haven't already
+              // Store the measurement in the database
+              await prisma.measurement.create({
+                data: {
+                  deviceId,
+                  moistureLevel: msg.moistureLevel,
+                  timestamp: msg.timestamp
+                    ? new Date(msg.timestamp)
+                    : new Date(),
+                },
+              });
+
+              // Acknowledge the message
+              connection.send(
+                JSON.stringify({ type: 'ack', status: 'success' })
+              );
+            } catch {
+              // Validation error with the measurement message
+              connection.send(
+                JSON.stringify({
+                  type: 'error',
+                  message: 'Invalid measurement format',
+                })
+              );
+            }
+          } else if (!isAuthenticated) {
+            // Not authenticated
             connection.send(
               JSON.stringify({
-                type: 'config',
-                thresholdRed: device.thresholdRed,
-                thresholdYellow: device.thresholdYellow,
-                thresholdGreen: device.thresholdGreen,
+                type: 'error',
+                message: 'Please authenticate first',
               })
             );
           } else {

@@ -1,32 +1,46 @@
 import WebSocket from 'ws';
+import crypto from 'crypto';
 
 // Configuration
 const deviceId = process.argv[2] || 'test-device-001';
+const authKey = process.argv[3] || '1234567890abcdef'; // This should be provided during device setup
 const serverUrl = `ws://localhost:8080/websocket?deviceId=${deviceId}`;
-const intervalSeconds = parseInt(process.argv[3] || '5', 10);
+const intervalSeconds = parseInt(process.argv[4] || '5', 10);
 
 // Generate random moisture level between 0 and 100
 const getRandomMoistureLevel = () => Math.floor(Math.random() * 101);
 
-console.log(`Starting continuous monitoring for device ${deviceId}`);
-console.log(`Sending measurements every ${intervalSeconds} seconds`);
+console.log(`Starting device simulation for ${deviceId}`);
+console.log(`Using authentication key: ${authKey}`);
+console.log(
+  `Will send measurements every ${intervalSeconds} seconds once claimed`
+);
 console.log(`WebSocket URL: ${serverUrl}`);
 
 // Variables to track configuration
 let thresholdRed = 0;
 let thresholdYellow = 0;
 let thresholdGreen = 0;
+let isClaimed = false;
 
-// Function to connect and start sending data
-function startMonitoring() {
+// Generate MD5 signature for authentication
+function generateSignature(deviceId, authKey, timestamp) {
+  return crypto
+    .createHash('md5')
+    .update(`${deviceId}:${authKey}:${timestamp}`)
+    .digest('hex');
+}
+
+// Function to connect and authenticate
+function startDevice() {
   // Create WebSocket connection
   const ws = new WebSocket(serverUrl);
-  let connected = false;
+  let authenticated = false;
   let interval;
 
   // Send a measurement
   function sendMeasurement() {
-    if (!connected) return;
+    if (!authenticated || !isClaimed) return;
 
     const moistureLevel = getRandomMoistureLevel();
 
@@ -55,13 +69,25 @@ function startMonitoring() {
     ws.send(JSON.stringify(message));
   }
 
+  // Send authentication message
+  function authenticate() {
+    const timestamp = new Date().toISOString();
+    const signature = generateSignature(deviceId, authKey, timestamp);
+
+    const authMessage = {
+      type: 'auth',
+      deviceId,
+      timestamp,
+      signature,
+    };
+
+    console.log('Sending authentication...');
+    ws.send(JSON.stringify(authMessage));
+  }
+
   // Connection opened
   ws.on('open', () => {
     console.log('Connection established!');
-    connected = true;
-
-    // Start sending measurements at the specified interval
-    interval = setInterval(sendMeasurement, intervalSeconds * 1000);
   });
 
   // Listen for messages
@@ -70,7 +96,45 @@ function startMonitoring() {
       const message = JSON.parse(data);
 
       // Handle different message types
-      if (message.type === 'config') {
+      if (message.type === 'welcome') {
+        console.log(`Server message: ${message.message}`);
+        // Authenticate after welcome
+        authenticate();
+      } else if (message.type === 'auth_success') {
+        authenticated = true;
+        isClaimed = message.claimed;
+        console.log(
+          `Authentication successful! Device ${isClaimed ? 'is' : 'is not'} claimed.`
+        );
+
+        if (isClaimed) {
+          console.log('Device is claimed - starting to send measurements');
+          // Start sending measurements at the specified interval
+          interval = setInterval(sendMeasurement, intervalSeconds * 1000);
+        } else {
+          console.log('Waiting for device to be claimed...');
+        }
+      } else if (message.type === 'claimed') {
+        isClaimed = true;
+        console.log(
+          'Device has been claimed! Starting to send measurements...'
+        );
+
+        // Update thresholds
+        thresholdRed = message.thresholdRed;
+        thresholdYellow = message.thresholdYellow;
+        thresholdGreen = message.thresholdGreen;
+
+        console.log(`Device configuration:
+        RED threshold:    ${thresholdRed}%
+        YELLOW threshold: ${thresholdYellow}%
+        GREEN threshold:  ${thresholdGreen}%`);
+
+        // Start sending measurements
+        if (!interval) {
+          interval = setInterval(sendMeasurement, intervalSeconds * 1000);
+        }
+      } else if (message.type === 'config') {
         thresholdRed = message.thresholdRed;
         thresholdYellow = message.thresholdYellow;
         thresholdGreen = message.thresholdGreen;
@@ -79,8 +143,6 @@ function startMonitoring() {
         RED threshold:    ${thresholdRed}%
         YELLOW threshold: ${thresholdYellow}%
         GREEN threshold:  ${thresholdGreen}%`);
-      } else if (message.type === 'welcome') {
-        console.log(`Server message: ${message.message}`);
       } else if (message.type === 'ack') {
         // Acknowledgment received
       } else if (message.type === 'error') {
@@ -97,7 +159,7 @@ function startMonitoring() {
     cleanup();
 
     // Try to reconnect after 5 seconds
-    setTimeout(startMonitoring, 5000);
+    setTimeout(startDevice, 5000);
   });
 
   // Connection closed
@@ -106,7 +168,7 @@ function startMonitoring() {
     cleanup();
 
     // Try to reconnect after 5 seconds
-    setTimeout(startMonitoring, 5000);
+    setTimeout(startDevice, 5000);
   });
 
   // Cleanup function to clear the interval
@@ -115,7 +177,7 @@ function startMonitoring() {
       clearInterval(interval);
       interval = null;
     }
-    connected = false;
+    authenticated = false;
   }
 
   // Handle process termination
@@ -127,5 +189,13 @@ function startMonitoring() {
   });
 }
 
-// Start the monitoring process
-startMonitoring();
+// Start the device
+startDevice();
+
+console.log(`
+Usage:
+  node continuous-monitor.js [deviceId] [authKey] [intervalSeconds]
+
+Example:
+  node continuous-monitor.js test-device-001 1234567890abcdef 5
+`);
