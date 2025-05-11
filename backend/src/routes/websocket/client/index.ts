@@ -2,8 +2,6 @@ import { FastifyPluginAsync } from 'fastify';
 import { TokenDecoded } from '../../../utils/types';
 
 const clientRoutes: FastifyPluginAsync = async (fastify): Promise<void> => {
-  // WebSocket endpoint for user clients (for real-time updates)
-  // Add onRequest hook for authentication
   fastify.get(
     '/',
     {
@@ -18,8 +16,6 @@ const clientRoutes: FastifyPluginAsync = async (fastify): Promise<void> => {
       },
     },
     (connection, req) => {
-      // Authentication has passed at this point
-      // The user info is available in req.user
       const user = req.user as TokenDecoded;
       const userEmail = user?.email || 'unknown';
       fastify.log.info(

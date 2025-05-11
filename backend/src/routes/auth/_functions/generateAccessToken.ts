@@ -17,7 +17,7 @@ export async function generateAccessToken(
       id: user.id,
       email: user.email,
     },
-    { expiresIn: '15m' }
+    { expiresIn: '24h' }
   );
 
   return accessToken;

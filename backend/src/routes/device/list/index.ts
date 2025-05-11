@@ -1,11 +1,8 @@
-import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { TokenDecoded } from '../../../utils/types';
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 
 const listDevices: FastifyPluginAsyncZod = async (fastify): Promise<void> => {
-  const prisma = new PrismaClient();
-
   fastify.get(
     '',
     {
@@ -32,7 +29,7 @@ const listDevices: FastifyPluginAsyncZod = async (fastify): Promise<void> => {
       // Get authenticated user
       const userId = request.user as TokenDecoded;
 
-      const devices = await prisma.device.findMany({
+      const devices = await fastify.prismaClient.device.findMany({
         where: { userId: userId.id },
         select: {
           id: true,

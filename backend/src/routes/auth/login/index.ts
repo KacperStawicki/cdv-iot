@@ -1,7 +1,6 @@
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { generateAccessToken } from '../_functions/generateAccessToken';
-import { generateRefreshToken } from '../_functions/generateRefreshToken';
 import { setAuthCookies } from '../_functions/setAuthCookies';
 
 const login: FastifyPluginAsyncZod = async (fastify) => {
@@ -59,14 +58,13 @@ const login: FastifyPluginAsyncZod = async (fastify) => {
 
       // Generate JWT tokens
       const accessToken = await generateAccessToken(user.email, fastify);
-      const refreshToken = await generateRefreshToken(user.email, fastify);
 
-      if (!accessToken || !refreshToken) {
+      if (!accessToken) {
         return reply.code(404).send({ message: 'Invalid credentials' });
       }
 
       // Set the tokens as cookies using the utility function
-      setAuthCookies(reply, { accessToken, refreshToken });
+      setAuthCookies(reply, { accessToken });
 
       return reply.code(200).send({
         message: 'Login successful',

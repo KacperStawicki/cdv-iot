@@ -1,4 +1,3 @@
-import { PrismaClient } from '@prisma/client';
 import { DeviceClaimSchema } from '../../../types/device';
 import { deviceConnections } from '../../websocket';
 import { z } from 'zod';
@@ -6,8 +5,6 @@ import { TokenDecoded } from '../../../utils/types';
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 
 const claimDevice: FastifyPluginAsyncZod = async (fastify): Promise<void> => {
-  const prisma = new PrismaClient();
-
   fastify.post<{ Body: z.infer<typeof DeviceClaimSchema> }>(
     '',
     {
@@ -36,7 +33,7 @@ const claimDevice: FastifyPluginAsyncZod = async (fastify): Promise<void> => {
       const userId = request.user as TokenDecoded;
 
       // Find the device
-      const device = await prisma.device.findUnique({
+      const device = await fastify.prismaClient.device.findUnique({
         where: { id: deviceId },
       });
 
@@ -61,7 +58,7 @@ const claimDevice: FastifyPluginAsyncZod = async (fastify): Promise<void> => {
       }
 
       // Update the device
-      const updatedDevice = await prisma.device.update({
+      const updatedDevice = await fastify.prismaClient.device.update({
         where: { id: deviceId },
         data: {
           userId: userId.id,

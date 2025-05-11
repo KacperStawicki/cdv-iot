@@ -42,7 +42,7 @@ The backend is built with the following technologies:
 
 ### HTTP Endpoints
 
-- `POST /websocket/command` - Send commands to devices
+- `POST /device/command` - Send commands to devices
   - Used to update device configurations
   - **Device authentication required** - Users can only control their own devices
   - Request body:

@@ -1,4 +1,3 @@
-import { PrismaClient } from '@prisma/client';
 import { generateDeviceAuthKey } from '../../../utils/deviceAuth';
 import { z } from 'zod';
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
@@ -11,8 +10,6 @@ const RegisterDeviceSchema = z.object({
 const registerDevice: FastifyPluginAsyncZod = async (
   fastify
 ): Promise<void> => {
-  const prisma = new PrismaClient();
-
   fastify.post<{ Body: z.infer<typeof RegisterDeviceSchema> }>(
     '',
     {
@@ -33,7 +30,7 @@ const registerDevice: FastifyPluginAsyncZod = async (
       const { deviceId } = request.body;
 
       // Check if device already exists
-      const existingDevice = await prisma.device.findUnique({
+      const existingDevice = await fastify.prismaClient.device.findUnique({
         where: { id: deviceId },
       });
 
@@ -47,7 +44,7 @@ const registerDevice: FastifyPluginAsyncZod = async (
       const authKey = generateDeviceAuthKey();
 
       // Create the device
-      const device = await prisma.device.create({
+      const device = await fastify.prismaClient.device.create({
         data: {
           id: deviceId,
           name: `Device ${deviceId}`,

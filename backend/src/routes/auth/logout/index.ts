@@ -26,14 +26,6 @@ const logout: FastifyPluginAsyncZod = async (fastify) => {
         sameSite: 'strict',
       });
 
-      reply.setCookie('refreshToken', '', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        path: '/',
-        maxAge: 0,
-        sameSite: 'strict',
-      });
-
       return reply.status(302).redirect('/');
     }
   );
