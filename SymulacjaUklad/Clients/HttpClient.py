@@ -1,11 +1,8 @@
-import requests
-import Singletons.singletons as singletons
-
 class HttpClient:
     def __init__(self):
         pass
 
-    def GetWetnessStatus(self):
+    def AuthorizeThisDevice(self):
         pass
 
     def SendWetnessState(self):
