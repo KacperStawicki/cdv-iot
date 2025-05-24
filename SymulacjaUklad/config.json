@@ -1,6 +1,6 @@
 {
   "serverUrl": "localhost:8080",
-  "deviceId": "test-device-1",
-  "authKey": "32f0ac9f626f7e24866996f60e859d2a",
-  "timeInterval": "5"
+  "deviceId": "test-device-001",
+  "authKey": "a1b2c3d4e5f6",
+  "intervalSeconds": 5
 }

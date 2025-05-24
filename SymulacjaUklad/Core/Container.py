@@ -34,5 +34,5 @@ class Container:
             return self._factories[cls]()
         raise ValueError(f"Typ {cls} nie jest zarejestrowany w kontenerze.")
 
-# 👇 GLOBALNY singleton kontener
+# GLOBALNY kontener ustawień
 container = Container()
