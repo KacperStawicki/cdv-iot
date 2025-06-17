@@ -2,8 +2,8 @@ FROM node:23-alpine
 
 WORKDIR /app
 
-# Install git and development dependencies
-RUN apk add --no-cache git dos2unix
+# Install git, development dependencies, and build tools for native dependencies
+RUN apk add --no-cache git dos2unix python3 make g++
 
 # Copy package files
 COPY package*.json ./
