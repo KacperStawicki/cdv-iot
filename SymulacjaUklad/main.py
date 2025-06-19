@@ -27,6 +27,8 @@ def load_settings():
     container.register_singleton(Settings, settings)
     container.register_singleton(logging.Logger, logger)
     container.register_singleton(AppService, AppService(settings, logger))
+    logger.error("Settings loaded")
+    logger.info("Settings loaded successfully")
 
 def generateSignature(deviceId, authKey, timestamp):
     to_hash = f"{deviceId}:{authKey}:{timestamp}"
@@ -50,6 +52,7 @@ class DeviceSimulator:
         self.stop_event = asyncio.Event()
 
     async def start(self):
+        self.logger.info("Starting device simulator")
         print(
             f"[DEBUG] Starting simulator with deviceId={self.settings.deviceId}, authKey={self.settings.authKey},"
             f" interval={self.settings.intervalSeconds}s")
