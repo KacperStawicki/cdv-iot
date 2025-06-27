@@ -86,7 +86,7 @@ class DeviceSimulator:
             f"[DEBUG] Starting simulator with deviceId={self.settings.deviceId}, authKey={self.settings.authKey},"
             f" interval={self.settings.intervalSeconds}s")
         self.logger.info(
-            f"Connecting to serverUrl=ws://{self.settings.serverUrl}/websocket?deviceId={self.settings.deviceId}")
+            f"Connecting to serverUrl=wss://{self.settings.serverUrl}/websocket?deviceId={self.settings.deviceId}")
 
         while not self.stop_event.is_set():
             try:
@@ -96,7 +96,7 @@ class DeviceSimulator:
                 await asyncio.sleep(5)
 
     async def connect_and_run(self):
-        url = f"ws://{self.settings.serverUrl}/websocket?deviceId={self.settings.deviceId}"
+        url = f"wss://{self.settings.serverUrl}/websocket?deviceId={self.settings.deviceId}"
         async with websockets.connect(url) as websocket:
             self.ws = websocket
             self.authenticated = False
