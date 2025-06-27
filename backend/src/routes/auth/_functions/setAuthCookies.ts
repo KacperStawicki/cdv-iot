@@ -11,9 +11,9 @@ export const setAuthCookies = (
   if (accessToken) {
     reply.setCookie('accessToken', accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true,
       path: '/',
-      sameSite: 'lax',
+      sameSite: 'none',
       maxAge: 60 * 60 * 24, // 24 Hours
     });
   }

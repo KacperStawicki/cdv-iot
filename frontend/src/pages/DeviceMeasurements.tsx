@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
-import api from "../api";
+import api, { WS_URL } from "../api";
 
 // MUI components
 import Container from "@mui/material/Container";
@@ -60,7 +60,11 @@ const DeviceMeasurements: React.FC = () => {
   // live websocket
   useEffect(() => {
     if (!id) return;
-    const ws = new WebSocket("ws://localhost:8080/websocket/client");
+    const ws = new WebSocket(WS_URL);
+
+    ws.onopen = () => {
+      console.log("WebSocket connected for device:", id);
+    };
 
     ws.onmessage = (event) => {
       try {
@@ -69,13 +73,23 @@ const DeviceMeasurements: React.FC = () => {
           const m: Measurement = msg.data;
           setMeasurements((prev) => [m, ...prev].slice(0, 50));
         }
-      } catch {
-        // ignore errors
+      } catch (error) {
+        console.error("WebSocket message parse error:", error);
       }
     };
 
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+
+    ws.onclose = (event) => {
+      console.log("WebSocket closed:", event.code, event.reason);
+    };
+
     return () => {
-      ws.close();
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
     };
   }, [id]);
 
