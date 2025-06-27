@@ -27,8 +27,8 @@ def load_settings():
         fmt="%(log_color)s%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
         log_colors={
-            "DEBUG": "cyan",
-            "INFO": "green",
+            "DEBUG": "grey",
+            "INFO": "white",
             "WARNING": "yellow",
             "ERROR": "red",
             "CRITICAL": "bold_red"
@@ -54,7 +54,6 @@ def load_settings():
     container.register_singleton(Settings, settings)
     container.register_singleton(logging.Logger, logger)
     container.register_singleton(AppService, AppService(settings, logger))
-    logger.error("Settings loaded")
     logger.info("Settings loaded successfully")
 
 
@@ -82,10 +81,9 @@ class DeviceSimulator:
 
     async def start(self):
         self.logger.info("Starting device simulator")
-        print(
-            f"[DEBUG] Starting simulator with deviceId={self.settings.deviceId}, authKey={self.settings.authKey},"
+        self.logger.debug(f"Starting simulator with deviceId={self.settings.deviceId}, authKey={self.settings.authKey},"
             f" interval={self.settings.intervalSeconds}s")
-        self.logger.info(
+        self.logger.debug(
             f"Connecting to serverUrl=wss://{self.settings.serverUrl}/websocket?deviceId={self.settings.deviceId}")
 
         while not self.stop_event.is_set():
