@@ -41,7 +41,7 @@ const DeviceMeasurements: React.FC = () => {
     if (!id) return;
     api
       .get<Measurement[]>(`/device/measurements/${id}`)
-      .then((res) => setMeasurements(res.data))
+      .then((res) => setMeasurements(res.data.slice(0, 3)))
       .catch(() => {
         setError("Unable to load measurements");
         navigate("/devices");
@@ -71,7 +71,10 @@ const DeviceMeasurements: React.FC = () => {
         const msg = JSON.parse(event.data);
         if (msg.type === "measurement" && msg.data?.deviceId === id) {
           const m: Measurement = msg.data;
-          setMeasurements((prev) => [m, ...prev].slice(0, 50));
+          setMeasurements((prev) => {
+            if (prev.some((p) => p.id === m.id)) return prev;
+            return [m, ...prev].slice(0, 3);
+          });
         }
       } catch (error) {
         console.error("WebSocket message parse error:", error);

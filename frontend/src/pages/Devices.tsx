@@ -72,7 +72,7 @@ const Devices: React.FC = () => {
       api
         .get<Measurement[]>(`/device/measurements/${d.id}`)
         .then((res) =>
-          setMeasurements((prev) => ({ ...prev, [d.id]: res.data }))
+          setMeasurements((prev) => ({ ...prev, [d.id]: res.data.slice(0, 3) }))
         )
         .catch(() => setMeasurements((prev) => ({ ...prev, [d.id]: [] })));
     });
@@ -83,7 +83,10 @@ const Devices: React.FC = () => {
         api
           .get<Measurement[]>(`/device/measurements/${d.id}`)
           .then((res) =>
-            setMeasurements((prev) => ({ ...prev, [d.id]: res.data }))
+            setMeasurements((prev) => ({
+              ...prev,
+              [d.id]: res.data.slice(0, 3),
+            }))
           )
           .catch(() => setMeasurements((prev) => ({ ...prev, [d.id]: [] })));
       });
@@ -126,8 +129,10 @@ const Devices: React.FC = () => {
         } else if (msg.type === "measurement" && msg.data) {
           const m = msg.data as Measurement;
           setMeasurements((prev) => {
-            const list = prev[m.deviceId] ? [m, ...prev[m.deviceId]] : [m];
-            return { ...prev, [m.deviceId]: list.slice(0, 10) };
+            const list = prev[m.deviceId] || [];
+            if (list.some((x) => x.id === m.id)) return prev;
+            const newList = [m, ...list].slice(0, 3);
+            return { ...prev, [m.deviceId]: newList };
           });
         } else if (msg.type === "threshold_update") {
           setDevices((prev) =>
