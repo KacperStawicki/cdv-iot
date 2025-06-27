@@ -59,6 +59,27 @@ async function main() {
       console.log('Test device ID: test-device-001');
       console.log('Test device auth key: ' + testAuthKey);
 
+      // Seed initial measurements for the test device
+      const existingMeasurements = await prisma.measurement.count({
+        where: { deviceId: 'test-device-001' },
+      });
+
+      if (existingMeasurements === 0) {
+        console.log('Seeding moisture measurements for test device...');
+
+        // Create 24 measurements – one per hour for the past day
+        const now = Date.now();
+        const measurementsData = Array.from({ length: 24 }).map((_, idx) => ({
+          deviceId: 'test-device-001',
+          moistureLevel: Math.floor(Math.random() * 60) + 20, // 20-79% moisture
+          timestamp: new Date(now - idx * 60 * 60 * 1000),
+        }));
+
+        await prisma.measurement.createMany({ data: measurementsData });
+
+        console.log('Measurements seeded successfully');
+      }
+
       // Create an unclaimed device
       const unclaimed = await prisma.device.create({
         data: {

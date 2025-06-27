@@ -1,58 +1,94 @@
-import React, { useState } from 'react';
-import api from '../api';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../api";
+
+import Container from "@mui/material/Container";
+import Paper from "@mui/material/Paper";
+import Typography from "@mui/material/Typography";
+import TextField from "@mui/material/TextField";
+import Button from "@mui/material/Button";
+import Box from "@mui/material/Box";
 
 const ClaimDevice: React.FC = () => {
-    const [deviceId, setDeviceId] = useState('');
-    const [authKey, setAuthKey] = useState('');
-    const [name, setName] = useState('');
-    const [message, setMessage] = useState('');
+  const [deviceId, setDeviceId] = useState("");
+  const [authKey, setAuthKey] = useState("");
+  const [name, setName] = useState("");
+  const [message, setMessage] = useState("");
+  const navigate = useNavigate();
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setMessage('');
-        try {
-            const res = await api.post('/device/claim', { deviceId, authKey, name });
-            setMessage(`Claimed: ${res.data.device.name}`);
-        } catch (err) {
-            setMessage('Failed to claim device');
-        }
-    };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage("");
+    try {
+      const res = await api.post("/device/claim", { deviceId, authKey, name });
+      setMessage(`Claimed: ${res.data.device.name}`);
+      navigate(`/measurements/${deviceId}`);
+    } catch (err) {
+      setMessage("Failed to claim device");
+    }
+  };
 
-    return (
-        <div className='cover_box'>
-            <div className="form-box login">
-                <h2>Claim Device</h2>
-                <form onSubmit={handleSubmit}>
-                    <div className='input-box'>
-                        <input
-                            value={deviceId}
-                            onChange={(e) => setDeviceId(e.target.value)}
-                            required
-                        />
-                        <label>Device ID</label>
-                    </div>
-                    <div className='input-box'>
-                        <input
-                            value={authKey}
-                            onChange={(e) => setAuthKey(e.target.value)}
-                            required
-                        />
-                        <label>Auth Key</label>
-                    </div>
-                    <div className='input-box'>
-                        <input
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            required
-                        />
-                        <label>Device Name</label>
-                    </div>
-                    <button type="submit" className='btn'>Claim</button>
-                </form>
-                {message && <p>{message}</p>}
-            </div>
-        </div>
-    );
+  return (
+    <Container
+      maxWidth="xs"
+      sx={{
+        minHeight: "calc(100vh - 64px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Paper sx={{ p: 4 }}>
+        <Typography variant="h5" align="center" gutterBottom>
+          Claim Device
+        </Typography>
+        <Box component="form" onSubmit={handleSubmit}>
+          <TextField
+            margin="normal"
+            label="Device ID"
+            fullWidth
+            required
+            value={deviceId}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setDeviceId(e.target.value)
+            }
+          />
+          <TextField
+            margin="normal"
+            label="Auth Key"
+            fullWidth
+            required
+            value={authKey}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setAuthKey(e.target.value)
+            }
+          />
+          <TextField
+            margin="normal"
+            label="Device Name"
+            fullWidth
+            required
+            value={name}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setName(e.target.value)
+            }
+          />
+          <Button type="submit" variant="contained" fullWidth sx={{ mt: 2 }}>
+            Claim
+          </Button>
+        </Box>
+        {message && (
+          <Typography
+            align="center"
+            sx={{ mt: 2 }}
+            color={message.includes("Claimed") ? "success.main" : "error.main"}
+          >
+            {message}
+          </Typography>
+        )}
+      </Paper>
+    </Container>
+  );
 };
 
 export default ClaimDevice;

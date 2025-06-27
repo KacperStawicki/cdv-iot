@@ -1,29 +1,35 @@
-import React, { createContext, useState, useEffect } from 'react';
-import api from './api';
+import React, { createContext, useState, useEffect } from "react";
+import api from "./api";
 
 interface AuthContextProps {
-    loggedIn: boolean;
-    setLoggedIn: (loggedIn: boolean) => void;
+  loggedIn: boolean;
+  loading: boolean;
+  setLoggedIn: (loggedIn: boolean) => void;
 }
 
 export const AuthContext = createContext<AuthContextProps>({
-    loggedIn: false,
-    setLoggedIn: () => { },
+  loggedIn: false,
+  loading: true,
+  setLoggedIn: () => {},
 });
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [loggedIn, setLoggedIn] = useState(false);
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        api
-            .get('/user')
-            .then(() => setLoggedIn(true))
-            .catch(() => setLoggedIn(false));
-    }, []);
+  useEffect(() => {
+    api
+      .get("/user")
+      .then(() => setLoggedIn(true))
+      .catch(() => setLoggedIn(false))
+      .finally(() => setLoading(false));
+  }, []);
 
-    return (
-        <AuthContext.Provider value={{ loggedIn, setLoggedIn }}>
-            {children}
-        </AuthContext.Provider>
-    );
+  return (
+    <AuthContext.Provider value={{ loggedIn, loading, setLoggedIn }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };

@@ -80,7 +80,7 @@ export default fp(async (fastify) => {
       }
 
       if (!deviceId) {
-        return reply.status(400).send({ message: 'Device ID is required' });
+        return reply.status(400).send({ error: 'Device ID is required' });
       }
 
       // Look up the device in the database
@@ -107,7 +107,7 @@ export default fp(async (fastify) => {
         fastify.log.error('Error verifying device ownership:', error);
         return reply
           .status(500)
-          .send({ message: 'Error verifying device ownership' });
+          .send({ error: 'Error verifying device ownership' });
       }
     }
   );

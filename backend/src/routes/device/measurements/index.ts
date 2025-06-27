@@ -50,15 +50,15 @@ const getDeviceMeasurements: FastifyPluginAsyncZod = async (
         });
       }
 
-      // Get the last 10 measurements for the device
-      const measurements = await fastify.prismaClient.measurement.findMany({
+      // Get the last 3 measurements for the device
+      const rawMeasurements = await fastify.prismaClient.measurement.findMany({
         where: {
           deviceId: deviceId,
         },
         orderBy: {
           timestamp: 'desc',
         },
-        take: 10,
+        take: 3,
         select: {
           id: true,
           deviceId: true,
@@ -66,6 +66,11 @@ const getDeviceMeasurements: FastifyPluginAsyncZod = async (
           timestamp: true,
         },
       });
+
+      const measurements = rawMeasurements.map((m) => ({
+        ...m,
+        timestamp: m.timestamp.toISOString(),
+      }));
 
       return measurements;
     }

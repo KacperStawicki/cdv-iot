@@ -3,6 +3,7 @@ import { WebSocket } from 'ws';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { verifyDeviceSignature } from '../../utils/deviceAuth';
+import { clientConnections } from './client/index.js';
 
 // Define message types
 const DeviceMessageSchema = z.object({
@@ -26,6 +27,20 @@ interface DeviceQueryParams {
 
 // Map to store active device connections - exported for use in command routes
 export const deviceConnections = new Map<string, WebSocket>();
+
+// Simple function to broadcast a message (as stringified JSON) to all websockets in a given Set.
+export function broadcastToConnections(
+  conns: Set<WebSocket> | undefined,
+  payload: unknown
+) {
+  if (!conns) return;
+  const data = JSON.stringify(payload);
+  for (const ws of conns) {
+    if (ws.readyState === ws.OPEN) {
+      ws.send(data);
+    }
+  }
+}
 
 const wsRoutes: FastifyPluginAsync = async (fastify): Promise<void> => {
   const prisma = new PrismaClient();
@@ -116,6 +131,14 @@ const wsRoutes: FastifyPluginAsync = async (fastify): Promise<void> => {
                 isAuthenticated = true;
                 deviceConnections.set(deviceId, connection);
 
+                // Notify user's clients that device is online
+                if (device.userId) {
+                  broadcastToConnections(clientConnections.get(device.userId), {
+                    type: 'device_online',
+                    deviceId,
+                  });
+                }
+
                 // Send authentication success
                 connection.send(
                   JSON.stringify({
@@ -183,7 +206,7 @@ const wsRoutes: FastifyPluginAsync = async (fastify): Promise<void> => {
               }
 
               // Store the measurement in the database
-              await prisma.measurement.create({
+              const stored = await prisma.measurement.create({
                 data: {
                   deviceId,
                   moistureLevel: msg.moistureLevel,
@@ -192,6 +215,22 @@ const wsRoutes: FastifyPluginAsync = async (fastify): Promise<void> => {
                     : new Date(),
                 },
               });
+
+              // Broadcast live measurement to connected clients of the owner
+              if (currentDevice.userId) {
+                broadcastToConnections(
+                  clientConnections.get(currentDevice.userId),
+                  {
+                    type: 'measurement',
+                    data: {
+                      id: stored.id,
+                      deviceId: stored.deviceId,
+                      moistureLevel: stored.moistureLevel,
+                      timestamp: stored.timestamp.toISOString(),
+                    },
+                  }
+                );
+              }
 
               // Acknowledge the message
               connection.send(
@@ -241,6 +280,21 @@ const wsRoutes: FastifyPluginAsync = async (fastify): Promise<void> => {
         if (deviceId) {
           deviceConnections.delete(deviceId);
           fastify.log.info(`Device ${deviceId} disconnected`);
+
+          // Notify clients about offline status
+          (async () => {
+            try {
+              const device = await findDevice(deviceId!);
+              if (device?.userId) {
+                broadcastToConnections(clientConnections.get(device.userId), {
+                  type: 'device_offline',
+                  deviceId,
+                });
+              }
+            } catch {
+              // Ignore errors when notifying clients about offline status
+            }
+          })();
         }
       });
     }

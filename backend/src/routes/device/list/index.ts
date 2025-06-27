@@ -16,6 +16,7 @@ const listDevices: FastifyPluginAsyncZod = async (fastify): Promise<void> => {
               thresholdRed: z.number(),
               thresholdYellow: z.number(),
               thresholdGreen: z.number(),
+              online: z.boolean(),
             })
           ),
         },
@@ -41,7 +42,14 @@ const listDevices: FastifyPluginAsyncZod = async (fastify): Promise<void> => {
         },
       });
 
-      return devices;
+      // Map devices to include online status using deviceConnections map
+      // Import deviceConnections dynamically to avoid circular issues
+      const { deviceConnections } = await import('../../websocket/index.js');
+
+      return devices.map((d) => ({
+        ...d,
+        online: deviceConnections.has(d.id),
+      }));
     }
   );
 };
