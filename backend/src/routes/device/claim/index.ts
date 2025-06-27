@@ -27,14 +27,14 @@ const claimDevice: FastifyPluginAsyncZod = async (fastify): Promise<void> => {
       preHandler: [fastify.authenticate],
     },
     async (request, reply) => {
-      const { deviceId, authKey, name } = request.body;
+      const { authKey, name } = request.body;
 
       // Get authenticated user
       const userId = request.user as TokenDecoded;
 
-      // Find the device
-      const device = await fastify.prismaClient.device.findUnique({
-        where: { id: deviceId },
+      // Find the device by its authentication key
+      const device = await fastify.prismaClient.device.findFirst({
+        where: { authKey },
       });
 
       if (!device) {
@@ -50,16 +50,9 @@ const claimDevice: FastifyPluginAsyncZod = async (fastify): Promise<void> => {
         });
       }
 
-      // Verify the authentication key
-      if (device.authKey !== authKey) {
-        return reply.status(401).send({
-          error: 'Invalid authentication key',
-        });
-      }
-
       // Update the device
       const updatedDevice = await fastify.prismaClient.device.update({
-        where: { id: deviceId },
+        where: { id: device.id },
         data: {
           userId: userId.id,
           name: name || device.name,
@@ -68,8 +61,8 @@ const claimDevice: FastifyPluginAsyncZod = async (fastify): Promise<void> => {
       });
 
       // Notify the device if it's connected
-      if (deviceConnections.has(deviceId)) {
-        const connection = deviceConnections.get(deviceId);
+      if (deviceConnections.has(device.id)) {
+        const connection = deviceConnections.get(device.id);
         connection?.send(
           JSON.stringify({
             type: 'claimed',
@@ -81,7 +74,7 @@ const claimDevice: FastifyPluginAsyncZod = async (fastify): Promise<void> => {
         );
 
         // Log a message about the notification
-        fastify.log.info(`Sent claimed notification to device ${deviceId}`);
+        fastify.log.info(`Sent claimed notification to device ${device.id}`);
       }
 
       return {

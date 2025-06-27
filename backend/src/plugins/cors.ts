@@ -5,7 +5,11 @@ export default fp(async (fastify) => {
   const allowedOrigins: string[] =
     process.env.NODE_ENV === 'production' && process.env.FRONTEND_URL
       ? [process.env.FRONTEND_URL] // Ensure it's a valid string
-      : ['http://localhost:3000', 'http://localhost:8080', 'http://localhost:5173']; // Development origin fallback
+      : [
+          'http://localhost:3000',
+          'http://localhost:8080',
+          'http://localhost:5173',
+        ]; // Development origin fallback
 
   fastify.register(cors, {
     origin: (

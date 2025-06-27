@@ -10,7 +10,6 @@ import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
 
 const ClaimDevice: React.FC = () => {
-  const [deviceId, setDeviceId] = useState("");
   const [authKey, setAuthKey] = useState("");
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
@@ -20,9 +19,9 @@ const ClaimDevice: React.FC = () => {
     e.preventDefault();
     setMessage("");
     try {
-      const res = await api.post("/device/claim", { deviceId, authKey, name });
+      const res = await api.post("/device/claim", { authKey, name });
       setMessage(`Claimed: ${res.data.device.name}`);
-      navigate(`/measurements/${deviceId}`);
+      navigate(`/devices`);
     } catch (err) {
       setMessage("Failed to claim device");
     }
@@ -43,16 +42,6 @@ const ClaimDevice: React.FC = () => {
           Claim Device
         </Typography>
         <Box component="form" onSubmit={handleSubmit}>
-          <TextField
-            margin="normal"
-            label="Device ID"
-            fullWidth
-            required
-            value={deviceId}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setDeviceId(e.target.value)
-            }
-          />
           <TextField
             margin="normal"
             label="Auth Key"

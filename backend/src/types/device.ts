@@ -16,9 +16,15 @@ export const DeviceSchema = z.object({
 export type Device = z.infer<typeof DeviceSchema>;
 
 export const DeviceClaimSchema = z.object({
-  deviceId: z.string(),
   authKey: z.string(),
-  name: z.string().optional(),
+  name: z.string(),
 });
 
 export type DeviceClaim = z.infer<typeof DeviceClaimSchema>;
+
+export const DeviceRenameSchema = z.object({
+  deviceId: z.string(),
+  name: z.string(),
+});
+
+export type DeviceRename = z.infer<typeof DeviceRenameSchema>;

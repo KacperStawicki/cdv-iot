@@ -40,8 +40,17 @@ const registerDevice: FastifyPluginAsyncZod = async (
         });
       }
 
-      // Generate a new authentication key
-      const authKey = generateDeviceAuthKey();
+      // Generate a unique authentication key
+      let authKey = generateDeviceAuthKey();
+      // Ensure uniqueness (very low chance of collision but validating defensively)
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const existingKey = await fastify.prismaClient.device.findFirst({
+          where: { authKey },
+        });
+        if (!existingKey) break;
+        authKey = generateDeviceAuthKey();
+      }
 
       // Create the device
       const device = await fastify.prismaClient.device.create({

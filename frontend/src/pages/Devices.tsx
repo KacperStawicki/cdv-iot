@@ -22,6 +22,7 @@ import DialogActions from "@mui/material/DialogActions";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 interface Device {
   id: string;
@@ -54,6 +55,7 @@ const Devices: React.FC = () => {
   const [editRed, setEditRed] = useState<number>(0);
   const [editYellow, setEditYellow] = useState<number>(0);
   const [editGreen, setEditGreen] = useState<number>(0);
+  const [editName, setEditName] = useState<string>("");
 
   useEffect(() => {
     api
@@ -234,10 +236,31 @@ const Devices: React.FC = () => {
                       setEditRed(d.thresholdRed);
                       setEditYellow(d.thresholdYellow);
                       setEditGreen(d.thresholdGreen);
+                      setEditName(d.name ?? "");
                       setEditOpen(true);
                     }}
                   >
                     <EditIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={async () => {
+                      if (
+                        !window.confirm("Remove this device from your account?")
+                      )
+                        return;
+                      try {
+                        await api.post("/device/remove", { deviceId: d.id });
+                        // Remove from UI
+                        setDevices((prev) =>
+                          prev.filter((dev) => dev.id !== d.id)
+                        );
+                      } catch (err) {
+                        console.error(err);
+                      }
+                    }}
+                  >
+                    <DeleteIcon fontSize="small" />
                   </IconButton>
                 </TableCell>
               </TableRow>
@@ -247,7 +270,7 @@ const Devices: React.FC = () => {
       </TableContainer>
 
       <Dialog open={editOpen} onClose={() => setEditOpen(false)}>
-        <DialogTitle>Edit Thresholds</DialogTitle>
+        <DialogTitle>Edit Device</DialogTitle>
         <DialogContent
           sx={{
             display: "flex",
@@ -257,7 +280,15 @@ const Devices: React.FC = () => {
             minWidth: "400px",
           }}
         >
-          <Typography variant="body2" sx={{ mb: 1 }}>
+          <TextField
+            label="Device Name"
+            fullWidth
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            sx={{ mt: 1 }}
+          />
+
+          <Typography variant="body2" sx={{ mb: 1, mt: 1 }}>
             Thresholds apply when the moisture % is{" "}
             <strong>equal to or below</strong> the value. If a measurement is
             above the highest (green) threshold it will be shown in{" "}
@@ -296,26 +327,52 @@ const Devices: React.FC = () => {
               editGreen < 0 ||
               editRed >= editYellow ||
               editYellow >= editGreen ||
-              editGreen > 100
+              editGreen > 100 ||
+              (editName.trim().length === 0 && (editDevice?.name ?? "") === "")
             }
             onClick={async () => {
               if (!editDevice) return;
               try {
-                await api.post("/device/command", {
-                  type: "configure",
-                  deviceId: editDevice.id,
-                  payload: {
-                    thresholdRed: editRed,
-                    thresholdYellow: editYellow,
-                    thresholdGreen: editGreen,
-                  },
-                });
+                const promises: Promise<any>[] = [];
+
+                // If name changed, send rename request
+                if (editName.trim() !== (editDevice.name ?? "")) {
+                  promises.push(
+                    api.post("/device/rename", {
+                      deviceId: editDevice.id,
+                      name: editName.trim(),
+                    })
+                  );
+                }
+
+                // If thresholds changed, send configure command
+                if (
+                  editRed !== editDevice.thresholdRed ||
+                  editYellow !== editDevice.thresholdYellow ||
+                  editGreen !== editDevice.thresholdGreen
+                ) {
+                  promises.push(
+                    api.post("/device/command", {
+                      type: "configure",
+                      deviceId: editDevice.id,
+                      payload: {
+                        thresholdRed: editRed,
+                        thresholdYellow: editYellow,
+                        thresholdGreen: editGreen,
+                      },
+                    })
+                  );
+                }
+
+                await Promise.all(promises);
+
                 // Optimistically update UI
                 setDevices((prev) =>
                   prev.map((d) =>
                     d.id === editDevice.id
                       ? {
                           ...d,
+                          name: editName.trim(),
                           thresholdRed: editRed,
                           thresholdYellow: editYellow,
                           thresholdGreen: editGreen,
@@ -323,6 +380,7 @@ const Devices: React.FC = () => {
                       : d
                   )
                 );
+
                 setEditOpen(false);
               } catch (err) {
                 console.error(err);
